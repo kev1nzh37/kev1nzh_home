@@ -1,0 +1,33 @@
+navbar:
+  blog_title: Kev1nzh Home
+
+footer:
+  statistics:
+    enable: false
+    source: 'busuanzi' # 可选 leancloud | busuanzi  根据自己需求选择
+    pv_format: '总访问量 {} 次' # 显示的文本，{}是数字的占位符（必须包含)，下同
+    uv_format: '总访客数 {} 人'
+
+index:
+  slogan:
+    enable: true
+    text: 时间就是金钱，我的朋友。
+    api:
+      enable: false
+      url: 'https://v1.hitokoto.cn/'
+      method: 'GET'
+      headers: {}
+      keys: ['hitokoto']
+    post_meta:
+      date: true
+      category: true
+      tag: true
+
+about:
+  avatar: /img/avatar.jpeg
+  name: 'Kev1nzh37'
+  intro: '前端开发 / 养猫世家 / FIFAOL3前50选手'
+  icons: 
+    - { class: 'iconfont icon-github-fill', link: 'https://github.com/kev1nzh37', tip: 'GitHub' }
+    - { class: 'iconfont icon-google-fill', link: 'kev1nzh37@gmail.com', tip: 'Gmail' }
+    - { class: 'iconfont icon-wechat-fill', qrcode: '/img/wechat.jpeg' }

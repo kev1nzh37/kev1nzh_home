@@ -1,0 +1,503 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=&#34;auto&#34;>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="Kev1nzh">
+  <meta name="keywords" content="">
+  
+  <title>Vite 依赖解析和预构建 源码分析 - (3)构建和插件 - Kev1nzh37</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4.0.0/github-markdown.min.css" />
+  <link  rel="stylesheet" href="/lib/hint/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10.7.2/styles/github-gist.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+  
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_kmeydafke9r.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>Kev1nzh Home</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" data-toggle="modal" data-target="#modalSearch">&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;</a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="Vite 依赖解析和预构建 源码分析 - (3)构建和插件">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2021-07-14 11:49" pubdate>
+        2021年7月14日 中午
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      2.7k 字
+    </span>
+  
+
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      38
+       分钟
+    </span>
+  
+
+  
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Vite 依赖解析和预构建 源码分析 - (3)构建和插件</h1>
+            
+            <div class="markdown-body">
+              <h1 id="Vite-依赖解析和预构建-源码分析-3-构建和插件"><a href="#Vite-依赖解析和预构建-源码分析-3-构建和插件" class="headerlink" title="Vite 依赖解析和预构建 源码分析 - (3)构建和插件"></a>Vite 依赖解析和预构建 源码分析 - (3)构建和插件</h1><h3 id="构建-build"><a href="#构建-build" class="headerlink" title="构建(build)"></a>构建(build)</h3><p>需要注意的几个参数：</p>
+<ol>
+<li><p><code>format</code>设为<code>esm</code>，是 Vite 的目的之一，将所有的代码视为原生 ES 模块。</p>
+<blockquote>
+<p>CommonJS 和 UMD 兼容性: 开发阶段中，Vite 的开发服务器将所有代码视为原生 ES 模块。因此，Vite 必须先将作为 CommonJS 或 UMD 发布的依赖项转换为 ESM。</p>
+</blockquote>
+</li>
+<li><p><code>splitting</code>设为<code>true</code>，仅适用于 esm 输出下，拆分多个文件引入的模块至单独文件，浏览页面 a 时，加载了 axios，再进入页面 b 时，直接调用已经加载后的 axios，省去了再次请求 axios 的操作。</p>
+<blockquote>
+<p>Code shared between multiple entry points is split off into a separate shared file that both entry points import. That way if the user first browses to one page and then to another page, they don’t have to download all of the JavaScript for the second page from scratch if the shared part has already been downloaded and cached by their browser.</p>
+</blockquote>
+<blockquote>
+<p>Code referenced through an asynchronous import() expression will be split off into a separate file and only loaded when that expression is evaluated. This allows you to improve the initial download time of your app by only downloading the code you need at startup, and then lazily downloading additional code if needed later.</p>
+</blockquote>
+</li>
+<li><p><code>plugins</code>含有 Vite 插件<code>esbuildDepPlugin</code>: 下面会详细解释此插件。</p>
+</li>
+<li><p><code>treeShaking</code>设为<code>ignore-annotations</code>, 文档中提到的忽略无用的代码，以便减轻模块的体积。</p>
+</li>
+</ol>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">// /optimizer/index.ts</span><br><br><span class="hljs-comment">// 最核心的地方，使用esBuild打包了</span><br><span class="hljs-keyword">const</span> result = <span class="hljs-keyword">await</span> build(&#123;<br>  <span class="hljs-attr">entryPoints</span>: <span class="hljs-built_in">Object</span>.keys(flatIdDeps),<br>  <span class="hljs-attr">bundle</span>: <span class="hljs-literal">true</span>, <span class="hljs-comment">//任何导入的依赖一起打包</span><br>  <span class="hljs-attr">format</span>: <span class="hljs-string">&#x27;esm&#x27;</span>, <span class="hljs-comment">// 符合vite 转换成esm</span><br>  <span class="hljs-attr">external</span>: config.optimizeDeps?.exclude, <span class="hljs-comment">//不需要处理的模块</span><br>  <span class="hljs-attr">logLevel</span>: <span class="hljs-string">&#x27;error&#x27;</span>, <span class="hljs-comment">//日志级别，只显示错误</span><br>  <span class="hljs-comment">//拆分代码，简单来说就是拆分入口内的共享import文件，在访问a页面时加载了axios，</span><br>  <span class="hljs-comment">//进入了b页面直接使用a页面加载的axios省去了再次请求的过程。</span><br>  <span class="hljs-attr">splitting</span>: <span class="hljs-literal">true</span>,<br>  <span class="hljs-attr">sourcemap</span>: <span class="hljs-literal">true</span>, <span class="hljs-comment">//这个不用多说哈</span><br>  <span class="hljs-attr">outdir</span>: cacheDir, <span class="hljs-comment">//vite自定义的默认缓存文件夹， node_modules/.vite</span><br>  <span class="hljs-comment">//修剪树枝？ 默认删除无用的代码，ignore-annotations的话指忽略那些删掉会损坏包的无用代码</span><br>  <span class="hljs-attr">treeShaking</span>: <span class="hljs-string">&#x27;ignore-annotations&#x27;</span>,<br>  <span class="hljs-attr">metafile</span>: <span class="hljs-literal">true</span>, <span class="hljs-comment">// 生成meta json</span><br>  define, <span class="hljs-comment">// 替换标识符</span><br>  <span class="hljs-attr">plugins</span>: [...plugins, esbuildDepPlugin(flatIdDeps, flatIdToExports, config)],<br>  ...esbuildOptions,<br>&#125;);<br></code></pre></td></tr></table></figure>
+
+<h3 id="esbuild-插件"><a href="#esbuild-插件" class="headerlink" title="esbuild 插件"></a>esbuild 插件</h3><p>了解 esbuild 的插件的可以直接跳过这节，此节简单解释了下插件的结构:</p>
+<p>(1) esbuild plugin 是一个包含<code>name</code>和<code>setup</code>的对象结构。 <code>name</code>为插件名,<code>setup</code>是一个接收<code>build</code>的函数。</p>
+<p>(2) 主要的逻辑在<code>setup</code>函数中，分别为<code>build.onResolve</code>和 <code>build.onLoad</code>。</p>
+<p><code>build.onResolve</code>: 此函数拦截相应的导入路径，修改路径并标记特定的命名空间。</p>
+<p><code>build.onLoad</code>: 此函数接收并筛选所有标记命名空间为<code>env-ns</code>的传入项,告诉 esbuild 该如何处理。</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-keyword">let</span> envPlugin = &#123;<br>  <span class="hljs-attr">name</span>: <span class="hljs-string">&#x27;env&#x27;</span>,<br>  <span class="hljs-function"><span class="hljs-title">setup</span>(<span class="hljs-params">build</span>)</span> &#123;<br>    <span class="hljs-comment">// 第一个参数为拦截规则。如下示例，用正则拦截了名为`env`的路径。</span><br>    <span class="hljs-comment">// 第二个参数为函数，返回对象中包含路径（这里可以对路径修改并返回）和标记`env-ns`命名空间。</span><br>    build.onResolve(&#123; <span class="hljs-attr">filter</span>: <span class="hljs-regexp">/^env$/</span> &#125;, <span class="hljs-function">(<span class="hljs-params">args</span>) =&gt;</span> (&#123;<br>      <span class="hljs-attr">path</span>: args.path,<br>      <span class="hljs-attr">namespace</span>: <span class="hljs-string">&#x27;env-ns&#x27;</span>,<br>    &#125;));<br><br>    <span class="hljs-comment">// 第一个参数为接收命名空间为env-ns的路径并通过filter筛选。</span><br>    <span class="hljs-comment">// 第二个参数为函数，告诉esbuild在env-ns命名空间中要返回json格式的环境变量。</span><br>    build.onLoad(&#123; <span class="hljs-attr">filter</span>: <span class="hljs-regexp">/.*/</span>, <span class="hljs-keyword">namespace</span>: &#x27;env-ns&#x27; &#125;, () =&gt; (&#123;<br>      <span class="hljs-attr">contents</span>: <span class="hljs-built_in">JSON</span>.stringify(process.env),<br>      <span class="hljs-attr">loader</span>: <span class="hljs-string">&#x27;json&#x27;</span>,<br>    &#125;));<br>  &#125;,<br>&#125;;<br><br><span class="hljs-built_in">require</span>(<span class="hljs-string">&#x27;esbuild&#x27;</span>)<br>  .build(&#123;<br>    <span class="hljs-attr">entryPoints</span>: [<span class="hljs-string">&#x27;app.js&#x27;</span>],<br>    <span class="hljs-attr">bundle</span>: <span class="hljs-literal">true</span>,<br>    <span class="hljs-attr">outfile</span>: <span class="hljs-string">&#x27;out.js&#x27;</span>,<br>    <span class="hljs-attr">plugins</span>: [envPlugin],<br>  &#125;)<br>  .catch(<span class="hljs-function">() =&gt;</span> process.exit(<span class="hljs-number">1</span>));<br></code></pre></td></tr></table></figure>
+
+<h3 id="esbuildDepPlugin"><a href="#esbuildDepPlugin" class="headerlink" title="esbuildDepPlugin"></a>esbuildDepPlugin</h3><p>首先需要看下 Vite 插件的一些用到的函数：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">// /optimizer/esbuildDepPlugin.ts</span><br><br><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">esbuildDepPlugin</span>(<span class="hljs-params"></span></span><br><span class="hljs-params"><span class="hljs-function">  qualified: Record&lt;<span class="hljs-built_in">string</span>, <span class="hljs-built_in">string</span>&gt;,</span></span><br><span class="hljs-params"><span class="hljs-function">  exportsData: Record&lt;<span class="hljs-built_in">string</span>, ExportsData&gt;,</span></span><br><span class="hljs-params"><span class="hljs-function">  config: ResolvedConfig,</span></span><br><span class="hljs-params"><span class="hljs-function"></span>): <span class="hljs-title">Plugin</span></span>;<br></code></pre></td></tr></table></figure>
+
+<h4 id="1-创建了两个解析器，分别对应-esm-和-commonjs。"><a href="#1-创建了两个解析器，分别对应-esm-和-commonjs。" class="headerlink" title="(1) 创建了两个解析器，分别对应 esm 和 commonjs。"></a>(1) 创建了两个解析器，分别对应 <code>esm</code> 和 <code>commonjs</code>。</h4><figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">// /optimizer/esbuildDepPlugin.ts</span><br><br><span class="hljs-comment">// default resolver which prefers ESM</span><br><span class="hljs-keyword">const</span> _resolve = config.createResolver(&#123; <span class="hljs-attr">asSrc</span>: <span class="hljs-literal">false</span> &#125;);<br><br><span class="hljs-comment">// cjs resolver that prefers Node</span><br><span class="hljs-keyword">const</span> _resolveRequire = config.createResolver(&#123;<br>  <span class="hljs-attr">asSrc</span>: <span class="hljs-literal">false</span>,<br>  <span class="hljs-attr">isRequire</span>: <span class="hljs-literal">true</span>,<br>&#125;);<br></code></pre></td></tr></table></figure>
+
+<h4 id="2-创建-resolve-函数，主要用来解决判断是什么类型的模块，并且返回相应的解析器结果。"><a href="#2-创建-resolve-函数，主要用来解决判断是什么类型的模块，并且返回相应的解析器结果。" class="headerlink" title="(2) 创建 resolve 函数，主要用来解决判断是什么类型的模块，并且返回相应的解析器结果。"></a>(2) 创建 <code>resolve</code> 函数，主要用来解决判断是什么类型的模块，并且返回相应的解析器结果。</h4><figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">// /optimizer/esbuildDepPlugin.ts</span><br><br><span class="hljs-keyword">const</span> resolve = (<br>  id: <span class="hljs-built_in">string</span>,<br>  <span class="hljs-attr">importer</span>: <span class="hljs-built_in">string</span>,<br>  <span class="hljs-attr">kind</span>: ImportKind,<br>  resolveDir?: <span class="hljs-built_in">string</span>,<br>): <span class="hljs-built_in">Promise</span>&lt;<span class="hljs-built_in">string</span> | <span class="hljs-literal">undefined</span>&gt; =&gt; &#123;<br>  <span class="hljs-keyword">let</span> _importer;<br>  <span class="hljs-comment">// explicit resolveDir - this is passed only during yarn pnp resolve for</span><br>  <span class="hljs-comment">// entries</span><br>  <span class="hljs-comment">// 传如果传入文件夹，那就获取绝对路径的文件夹路径</span><br>  <span class="hljs-keyword">if</span> (resolveDir) &#123;<br>    _importer = normalizePath(path.join(resolveDir, <span class="hljs-string">&#x27;*&#x27;</span>));<br>  &#125; <span class="hljs-keyword">else</span> &#123;<br>    <span class="hljs-comment">// map importer ids to file paths for correct resolution</span><br>    <span class="hljs-comment">/**</span><br><span class="hljs-comment">     * mporter是否在外部传入的flatIdDeps中，</span><br><span class="hljs-comment">     * &#123;</span><br><span class="hljs-comment">     *  vue: &#x27;/Users/kev1nzh/Desktop/new/my-vue-app/node_modules/vue/dist/vue.runtime.esm-bundler.js&#x27;,</span><br><span class="hljs-comment">     *  axios: &#x27;/Users/kev1nzh/Desktop/new/my-vue-app/node_modules/axios/index.js&#x27;</span><br><span class="hljs-comment">     * &#125;</span><br><span class="hljs-comment">     * 如果在获取value的路径</span><br><span class="hljs-comment">     */</span><br>    _importer = importer <span class="hljs-keyword">in</span> qualified ? qualified[importer] : importer;<br>  &#125;<br>  <span class="hljs-comment">//判断是否时以require开头，为了筛选出 kind为require-resolve, require-call的模块，调用resolveRequire</span><br>  <span class="hljs-keyword">const</span> resolver = kind.startsWith(<span class="hljs-string">&#x27;require&#x27;</span>) ? _resolveRequire : _resolve;<br>  <span class="hljs-comment">// 返回解决完的路径,这个函数的代码后续会有章节详细讲</span><br>  <span class="hljs-keyword">return</span> resolver(id, _importer);<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<h4 id="3-创建resolveEntry函数，根据传入类型返回命名空间。"><a href="#3-创建resolveEntry函数，根据传入类型返回命名空间。" class="headerlink" title="(3) 创建resolveEntry函数，根据传入类型返回命名空间。"></a>(3) 创建<code>resolveEntry</code>函数，根据传入类型返回命名空间。</h4><figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">resolveEntry</span>(<span class="hljs-params">id: <span class="hljs-built_in">string</span>, isEntry: <span class="hljs-built_in">boolean</span>, resolveDir: <span class="hljs-built_in">string</span></span>) </span>&#123;<br>  <span class="hljs-keyword">const</span> flatId = flattenId(id);<br>  <span class="hljs-keyword">if</span> (flatId <span class="hljs-keyword">in</span> qualified) &#123;<br>    <span class="hljs-keyword">return</span> isEntry<br>      ? &#123;<br>          <span class="hljs-attr">path</span>: flatId,<br>          <span class="hljs-attr">namespace</span>: <span class="hljs-string">&#x27;dep&#x27;</span>,<br>        &#125;<br>      : &#123;<br>          <span class="hljs-attr">path</span>: <span class="hljs-built_in">require</span>.resolve(qualified[flatId], &#123;<br>            <span class="hljs-attr">paths</span>: [resolveDir],<br>          &#125;),<br>        &#125;;<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<h4 id="4-Vite-的onResolve"><a href="#4-Vite-的onResolve" class="headerlink" title="(4) Vite 的onResolve"></a>(4) Vite 的<code>onResolve</code></h4><p>Vite 创建了两个<code>onResolve</code>， 一个处理 js 文件，一个处理非 js 类型的文件。</p>
+<p>处理非 js：</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">// /optimizer/esbuildDepPlugin.ts</span><br><br><span class="hljs-comment">// 这个onResolve为处理非js类型的文件</span><br><br><span class="hljs-comment">// 非js类型的文件数组</span><br><span class="hljs-keyword">const</span> externalTypes = [<br>  <span class="hljs-string">&#x27;css&#x27;</span>,<br>  <span class="hljs-string">&#x27;less&#x27;</span>,<br>  <span class="hljs-string">&#x27;sass&#x27;</span>,<br>  ...<br>];<br>build.onResolve(<br>  &#123;<br>    <span class="hljs-comment">// 这边通过正则匹配出在externalTypes数组内格式的文件</span><br>    <span class="hljs-attr">filter</span>: <span class="hljs-keyword">new</span> <span class="hljs-built_in">RegExp</span>(<span class="hljs-string">`\\.(`</span> + externalTypes.join(<span class="hljs-string">&#x27;|&#x27;</span>) + <span class="hljs-string">`)(\\?.*)?$`</span>),<br>  &#125;,<br>  <span class="hljs-keyword">async</span> (&#123; <span class="hljs-attr">path</span>: id, importer, kind &#125;) =&gt; &#123;<br>    <span class="hljs-comment">// importer &#123;string&#125; 要打包的导入模块路径</span><br>    <span class="hljs-comment">// kind &#123;string&#125; 导入规则 | &#x27;entry-point&#x27;| &#x27;import-statement&#x27;| &#x27;require-call&#x27;| &#x27;dynamic-import&#x27;| &#x27;require-resolve&#x27;| &#x27;import-rule&#x27;| &#x27;url-token&#x27;</span><br>    <span class="hljs-keyword">const</span> resolved = <span class="hljs-keyword">await</span> resolve(id, importer, kind);<br>    <span class="hljs-keyword">if</span> (resolved) &#123;<br>      <span class="hljs-comment">// 返回标记特殊处理，并返回引入文件的路径</span><br>      <span class="hljs-keyword">return</span> &#123;<br>        <span class="hljs-attr">path</span>: resolved,<br>        <span class="hljs-attr">external</span>: <span class="hljs-literal">true</span>,<br>      &#125;;<br>    &#125;<br>  &#125;,<br>);<br></code></pre></td></tr></table></figure>
+
+<p>处理 js 类型的文件:</p>
+<p>以下代码就是 Vite 最刺激的地方，我应该会新建一篇章节来解释这块代码。</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">// /optimizer/esbuildDepPlugin.ts</span><br><br><span class="hljs-comment">// 这个onResolve为处理js类型的文件</span><br><br>build.onResolve(<br>  &#123; <span class="hljs-attr">filter</span>: <span class="hljs-regexp">/^[\w@][^:]/</span> &#125;,<br>  <span class="hljs-keyword">async</span> (&#123; <span class="hljs-attr">path</span>: id, importer, kind, resolveDir &#125;) =&gt; &#123;<br>    <span class="hljs-comment">/**</span><br><span class="hljs-comment">      id:  vue</span><br><span class="hljs-comment">      importer:</span><br><span class="hljs-comment">      kind:  entry-point</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">      id:  <span class="hljs-doctag">@vue</span>/runtime-dom</span><br><span class="hljs-comment">      importer:  /Users/kev1nzh/Desktop/new/my-vue-app/node_modules/vue/dist/vue.runtime.esm-bundler.js</span><br><span class="hljs-comment">      kind:  import-statement</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">      参数如上，vite把预打包的模块分为 入口模块和依赖模块，</span><br><span class="hljs-comment">      像axios vue之类的 我们在项目中import的模块，</span><br><span class="hljs-comment">      runtime-dom 这种模块则是在package-lock.json, 是项目中入口模块的依赖模块，</span><br><span class="hljs-comment">      然后经过以下代码来区分并处理。</span><br><span class="hljs-comment">    */</span><br>    <span class="hljs-keyword">const</span> isEntry = !importer;<br>    <span class="hljs-comment">// ensure esbuild uses our resolved entries</span><br>    <span class="hljs-keyword">let</span> entry;<br>    <span class="hljs-comment">// if this is an entry, return entry namespace resolve result</span><br>    <span class="hljs-comment">// 如果他是入口，就返回名为dep的命名空间来做接下来操作</span><br>    <span class="hljs-keyword">if</span> ((entry = resolveEntry(id, isEntry, resolveDir))) <span class="hljs-keyword">return</span> entry;<br><br>    <span class="hljs-comment">// check if this is aliased to an entry - also return entry namespace</span><br>    <span class="hljs-keyword">const</span> aliased = <span class="hljs-keyword">await</span> _resolve(id, <span class="hljs-literal">undefined</span>, <span class="hljs-literal">true</span>);<br>    <span class="hljs-keyword">if</span> (aliased &amp;&amp; (entry = resolveEntry(aliased, isEntry, resolveDir))) &#123;<br>      <span class="hljs-keyword">return</span> entry;<br>    &#125;<br><br>    <span class="hljs-comment">// use vite&#x27;s own resolver</span><br>    <span class="hljs-comment">// ok这里开始处理依赖模块的流程，这边resolve</span><br>    <span class="hljs-keyword">const</span> resolved = <span class="hljs-keyword">await</span> resolve(id, importer, kind);<br>    <span class="hljs-keyword">if</span> (resolved) &#123;<br>      <span class="hljs-comment">// vite自定义的id const browserExternalId = &#x27;__vite-browser-external&#x27;</span><br>      <span class="hljs-comment">// 返回命名空间和id，因为浏览器兼容问题，无法处理的忽略模块</span><br>      <span class="hljs-keyword">if</span> (resolved.startsWith(browserExternalId)) &#123;<br>        <span class="hljs-comment">//返回给browser-external命名空间处理并返回id</span><br>        <span class="hljs-keyword">return</span> &#123;<br>          <span class="hljs-attr">path</span>: id,<br>          <span class="hljs-attr">namespace</span>: <span class="hljs-string">&#x27;browser-external&#x27;</span>,<br>        &#125;;<br>      &#125;<br>      <span class="hljs-comment">// 是否是非js或者外部文件，和上一个onResolve一样返回处理</span><br>      <span class="hljs-keyword">if</span> (isExternalUrl(resolved)) &#123;<br>        <span class="hljs-keyword">return</span> &#123;<br>          <span class="hljs-attr">path</span>: resolved,<br>          <span class="hljs-attr">external</span>: <span class="hljs-literal">true</span>,<br>        &#125;;<br>      &#125;<br>      <span class="hljs-keyword">return</span> &#123;<br>        <span class="hljs-attr">path</span>: path.resolve(resolved),<br>      &#125;;<br>    &#125;<br>  &#125;,<br>);<br></code></pre></td></tr></table></figure>
+
+<h4 id="5-Vite-的onLoad"><a href="#5-Vite-的onLoad" class="headerlink" title="(5) Vite 的onLoad"></a>(5) Vite 的<code>onLoad</code></h4><p><code>dep</code>命名空间处理,下面代码有点复杂，简单说下逻辑。</p>
+<p>第一步，获取每个入口模块的引入路径，例如<code>axios</code>的<code>entryFile</code>为<code>/.../my-vue-app/node_modules/axios/index.js</code>,</p>
+<p>转换成路径<code>relativePath</code>并添加前缀<code>node_modules/axios/index.js</code>。</p>
+<p>第二步，根据<code>exportsData</code>（之前 parse 后返回出的引入和导出的数据）来判断<code>commonjs、default、export from</code>类型，</p>
+<p>最后转换成<code>contents</code> =&gt; <code>export default require(&quot;./node_modules/axios/index.js&quot;)</code>。</p>
+<p>第三步，根据入口模块的路径获取后缀<code>ext</code>。</p>
+<p>最后返回对象。</p>
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * loader &#123;string&#125; 告诉esbuild要解析成js/css/....</span><br><span class="hljs-comment"> * resolveDir &#123;string&#125; 模块导入路径</span><br><span class="hljs-comment"> * contents: &#123;string&#125; 加载内容</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">return</span> &#123;<br>  <span class="hljs-attr">loader</span>: ext <span class="hljs-keyword">as</span> Loader,<br>  contents,<br>  <span class="hljs-attr">resolveDir</span>: root,<br>&#125;;<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight typescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><code class="hljs typescript"><span class="hljs-comment">// 获取项目的路径</span><br><span class="hljs-keyword">const</span> root = path.resolve(config.root);<br>build.onLoad(&#123; <span class="hljs-attr">filter</span>: <span class="hljs-regexp">/.*/</span>, <span class="hljs-keyword">namespace</span>: &#x27;dep&#x27; &#125;, (&#123; path: id &#125;) =&gt; &#123;<br>  <span class="hljs-comment">// 入口文件 vue =&gt; /.../my-vue-app/node_modules/vue/dist/vue.runtime.esm-bundler.js</span><br>  <span class="hljs-keyword">const</span> entryFile = qualified[id];<br>  <span class="hljs-comment">// 获取原始路径</span><br>  <span class="hljs-keyword">let</span> relativePath = normalizePath(path.relative(root, entryFile));<br>  <span class="hljs-comment">// 这边来处理 .abc.js =&gt; ./abc.js</span><br>  <span class="hljs-keyword">if</span> (!relativePath.startsWith(<span class="hljs-string">&#x27;.&#x27;</span>)) &#123;<br>    relativePath = <span class="hljs-string">`./<span class="hljs-subst">$&#123;relativePath&#125;</span>`</span>;<br>  &#125;<br><br>  <span class="hljs-keyword">let</span> contents = <span class="hljs-string">&#x27;&#x27;</span>;<br>  <span class="hljs-keyword">const</span> data = exportsData[id];<br>  <span class="hljs-keyword">const</span> [imports, <span class="hljs-built_in">exports</span>] = data;<br>  <span class="hljs-comment">// 下面都是处理不同模块的流程</span><br>  <span class="hljs-keyword">if</span> (!imports.length &amp;&amp; !<span class="hljs-built_in">exports</span>.length) &#123;<br>    <span class="hljs-comment">// cjs</span><br>    <span class="hljs-comment">// export default require(&quot;./node_modules/axios/index.js&quot;);</span><br>    contents += <span class="hljs-string">`export default require(&quot;<span class="hljs-subst">$&#123;relativePath&#125;</span>&quot;);`</span>;<br>  &#125; <span class="hljs-keyword">else</span> &#123;<br>    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">exports</span>.includes(<span class="hljs-string">&#x27;default&#x27;</span>)) &#123;<br>      <span class="hljs-comment">// default</span><br>      <span class="hljs-comment">// import d from &quot;./node_modules/element-plus/lib/index.esm.js&quot;;export default d;</span><br>      contents += <span class="hljs-string">`import d from &quot;<span class="hljs-subst">$&#123;relativePath&#125;</span>&quot;;export default d;`</span>;<br>    &#125;<br>    <span class="hljs-keyword">if</span> (data.hasReExports || <span class="hljs-built_in">exports</span>.length &gt; <span class="hljs-number">1</span> || <span class="hljs-built_in">exports</span>[<span class="hljs-number">0</span>] !== <span class="hljs-string">&#x27;default&#x27;</span>) &#123;<br>      <span class="hljs-comment">// hasReExports</span><br>      <span class="hljs-comment">// export * from &quot;./node_modules/vue/dist/vue.runtime.esm-bundler.js&quot;</span><br>      contents += <span class="hljs-string">`\nexport * from &quot;<span class="hljs-subst">$&#123;relativePath&#125;</span>&quot;`</span>;<br>    &#125;<br>  &#125;<br>  <span class="hljs-comment">// 获取入口文件的后缀</span><br>  <span class="hljs-keyword">let</span> ext = path.extname(entryFile).slice(<span class="hljs-number">1</span>);<br>  <span class="hljs-keyword">if</span> (ext === <span class="hljs-string">&#x27;mjs&#x27;</span>) ext = <span class="hljs-string">&#x27;js&#x27;</span>;<br>  <span class="hljs-comment">/**</span><br><span class="hljs-comment">   * loader &#123;string&#125; 告诉esbuild要解析成js/css/....</span><br><span class="hljs-comment">   * resolveDir &#123;string&#125; 模块导入路径</span><br><span class="hljs-comment">   * contents: &#123;string&#125; 加载内容</span><br><span class="hljs-comment">   *</span><br><span class="hljs-comment">   * 以下是一个处理vue runtime-dom的例子</span><br><span class="hljs-comment">   * &#123;</span><br><span class="hljs-comment">   *  ext: &#x27;js&#x27;,</span><br><span class="hljs-comment">   *  contents: &quot;export * from &quot;./node_modules/vue/dist/vue.runtime.esm-bundler.js&quot;,</span><br><span class="hljs-comment">   *  resolveDir: &#x27;..../node_modules/vue/dist&#x27;</span><br><span class="hljs-comment">   * &#125;</span><br><span class="hljs-comment">   */</span><br>  <span class="hljs-keyword">return</span> &#123;<br>    <span class="hljs-attr">loader</span>: ext <span class="hljs-keyword">as</span> Loader,<br>    contents,<br>    <span class="hljs-attr">resolveDir</span>: root,<br>  &#125;;<br>&#125;);<br></code></pre></td></tr></table></figure>
+
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<li><p>上一章节<a href="/docs/rebuild/optimizer">预构建对象和前期准备</a>中获取<code>deps</code>对象后，调用<code>esbuild</code>的打包功能。</p>
+</li>
+<li><p>传入<code>Vite</code>自定义的插件中，以文件类型分类。</p>
+</li>
+<li><p> 告诉 esbuild 分为入口模块和依赖模块并处理，最终打包文件写入至<code>/node_modules/.vite</code>文件夹中。</p>
+</li>
+</ol>
+<h3 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h3><p>Vite 项目(Vue)中的<code>axios</code>编译走向如下：</p>
+<h4 id="1-Vue-项目组件中引入axios"><a href="#1-Vue-项目组件中引入axios" class="headerlink" title="1. Vue 项目组件中引入axios"></a>1. Vue 项目组件中引入<code>axios</code></h4><p><img src="/images/build/1.png" srcset="/img/loading.gif" lazyload alt="pre-build"></p>
+<h4 id="2-vite-文件中的axios-js文件，已经编译成上一节中contents的路径了。"><a href="#2-vite-文件中的axios-js文件，已经编译成上一节中contents的路径了。" class="headerlink" title="2. .vite 文件中的axios.js文件，已经编译成上一节中contents的路径了。"></a>2. .vite 文件中的<code>axios.js</code>文件，已经编译成上一节中<code>contents</code>的路径了。</h4><p><img src="/images/build/3.png" srcset="/img/loading.gif" lazyload alt="pre-build"></p>
+<h3 id="最后的最后"><a href="#最后的最后" class="headerlink" title="最后的最后"></a>最后的最后</h3><p>所有依赖模块构建完毕后写入<code>/node_modules/.vite</code>文件中，如若依赖项新增或改变，则会重写构建<code>.vite</code>。每次启动项目时，如果有预构建文件，可以直接启动，不需要每次重写打包依赖项。</p>
+<p><code>ECMA Script Modules(esm)</code>, 虽然 2021 年了，很多前端都已经在用最新的技术和代码来做项目，但是还有很多很多很多非常好用的模块都是好几年前创建的，那些模块导出机制五花八门，由<code>Vite</code>统一转换成 esm 的方式，只提供源码，让浏览器接管了打包这一服务。当页面需要某个模块时，Vite 只要转换并返回 esm 方式的源码就行了。</p>
+
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/%E5%B7%A5%E7%A8%8B%E5%8C%96/">工程化</a>
+                    
+                      <a class="hover-with-bg" href="/tags/Vite/">Vite</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/07/14/vite-2/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Vite 依赖解析和预构建 源码分析 - (2)预构建对象和前期准备</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/07/13/Start/">
+                        <span class="hidden-mobile">Start</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/tocbot@4.12.3/dist/tocbot.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4.3.1/anchor.min.js" ></script>
+
+
+
+  <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js" ></script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+      typing(title)
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>
